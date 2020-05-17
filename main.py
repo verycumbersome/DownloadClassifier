@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import time
@@ -16,11 +17,9 @@ class DirSorter():
         self.ignore_patterns = ""
         self.ignore_directories = False
         self.case_sensitive = True
+        self.instructionQueue = [("","") for i in range(1)]
 
-        outPaths["Misc"] = {
-            "outPath":"/Users/matthewjordan/Downloads/Misc",
-            "pattern":[]
-        }
+        print(self.instructionQueue)
 
         # Create Sorter classification patterns
         for path in outPaths:
@@ -71,21 +70,57 @@ class DirSorter():
 
     def classifyFile(self, path):
         # Gets extension of file from path
-        ext = path.split(".")[-1]
+        name, ext = filename, file_extension = os.path.splitext(path)
 
         # Checks to see which classifier the extension is in
         for classification in self.outPaths:
-            if (ext in [x.replace("*.", "") for x in self.outPaths[classification]["pattern"]]):
+            if (ext in [x.replace("*", "") for x in self.outPaths[classification]["pattern"]]):
                 # Return classification if found
                 return (classification)
 
-        # If no classification is found return Misc
-        return ("Misc")
+        # If no classification is found return
+        return None
+
+
+    def classifyDir(self):
+        # Classify every file in dir
+        for file in os.listdir(self.path):
+            curPath = self.path + file
+            self.moveFile(curPath)
+
+
+    def moveFile(self, srcPath):
+        # Gets the classification for the file type of the path moved
+        classification = self.classifyFile(srcPath)
+
+        if classification:
+            # Gets the output path given the file type
+            newPath = self.outPaths[classification]["outPath"] + srcPath.split("/")[-1]
+
+            # Execute instruction
+            os.replace(srcPath, newPath)
+
+
+            # curInstruction = self.instructionQueue.pop(0)
+            # try:
+            #     print("Moving file", curInstruction[1], "to", curInstruction[0])
+            #     os.replace(curInstruction[0], curInstruction[1])
+            #     self.instructionQueue.append(("", ""))
+            #
+            # except:
+            #     print("Unable to move file")
+
+            # Add isntruction to instructionQueue
+            # self.instructionQueue.append((srcPath, newPath))
+
+
+    def on_moved(self, event):
+        print("Moved")
+        self.moveFile(event.dest_path)
 
     def on_created(self, event):
-        event.src_path
-        print("CREATED")
-
+        print("Created")
+        self.moveFile(event.src_path)
 
     def on_deleted(self, event):
         event.src_path
@@ -97,27 +132,27 @@ class DirSorter():
         print(f"hey buddy, {event.src_path} has been modified")
 
 
-    def on_moved(self, event):
-        classification = self.classifyFile(event.dest_path)
-        newPath = self.outPaths[classification]["outPath"] + event.dest_path.split("/")[-1]
-        print(newPath)
-        os.replace(event.dest_path, newPath)
-        print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
 
 
 def main():
+    mainPath = "/Users/matthewjordan/Code/DownloadOrganizer/Testfolder/"
     outPaths = {
         "Video":{
-            "outPath":"/Users/matthewjordan/Downloads/Video/",
+            "outPath":mainPath + "Video/",
             "pattern":["*.mp4", "*.mov"]
         },
         "Audio":{
-            "outPath":"/Users/matthewjordan/Downloads/Audio/",
-            "pattern":["*.mp3", "*.wav", "*.aif"]
-        }
+            "outPath":mainPath + "Audio/",
+            "pattern":["*.mp3", "*.m4a", "*.mid", "*.wav", "*.aif", "*.aiff"]
+        },
+        "Image":{
+            "outPath":mainPath + "Image/",
+            "pattern":["*.png", "*.jpg", "*.pdf"]
+        },
     }
     # Initalize and run the Sorter classe
-    dirSorter = DirSorter("/Users/matthewjordan/Downloads/", outPaths)
+    dirSorter = DirSorter(mainPath, outPaths)
+    dirSorter.classifyDir()
     dirSorter.run()
 
 
