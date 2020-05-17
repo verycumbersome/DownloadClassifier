@@ -17,9 +17,6 @@ class DirSorter():
         self.ignore_patterns = ""
         self.ignore_directories = False
         self.case_sensitive = True
-        self.instructionQueue = [("","") for i in range(1)]
-
-        print(self.instructionQueue)
 
         # Create Sorter classification patterns
         for path in outPaths:
@@ -28,6 +25,9 @@ class DirSorter():
 
 
     def run(self):
+        """
+        Runs a continuous while loop to maintain the running state of the program
+        """
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
@@ -39,10 +39,10 @@ class DirSorter():
             self.case_sensitive
         )
 
-        event_handler.on_created = self.on_created
-        event_handler.on_deleted = self.on_deleted
-        event_handler.on_modified = self.on_modified
+        # event_handler.on_deleted = self.on_deleted
+        # event_handler.on_modified = self.on_modified
         event_handler.on_moved = self.on_moved
+        event_handler.on_created = self.on_created
 
         go_recursively = True
 
@@ -59,6 +59,9 @@ class DirSorter():
 
 
     def createPath(self, outPath):
+        """
+        Initalizes the path to create the folder when ran
+        """
         # Create new directory for output path
         try:
             os.mkdir(outPath)
@@ -69,10 +72,21 @@ class DirSorter():
 
 
     def classifyFile(self, path):
+        """
+        Returns the value of the classification type as provided to the class via self.outPaths
+        """
         # Gets extension of file from path
         name, ext = filename, file_extension = os.path.splitext(path)
+        fileName = os.path.basename(path)
 
-        # Checks to see which classifier the extension is in
+        # Look for all keywords in path
+        for classification in self.outPaths:
+            keywords = self.outPaths[classification]["keywords"]
+            if [ele for ele in keywords if(ele in fileName)]:
+                return (classification)
+#
+
+        # Look for all extension patterns in path
         for classification in self.outPaths:
             if (ext in [x.replace("*", "") for x in self.outPaths[classification]["pattern"]]):
                 # Return classification if found
@@ -82,7 +96,10 @@ class DirSorter():
         return None
 
 
-    def classifyDir(self):
+    def organizeDir(self):
+        """
+        Classifies and moves each recognizable file in the directory to its corresponding classification path
+        """
         # Classify every file in dir
         for file in os.listdir(self.path):
             curPath = self.path + file
@@ -90,6 +107,9 @@ class DirSorter():
 
 
     def moveFile(self, srcPath):
+        """
+        Moves the file from srcPath to the relative path given the classification value
+        """
         # Gets the classification for the file type of the path moved
         classification = self.classifyFile(srcPath)
 
@@ -101,59 +121,63 @@ class DirSorter():
             os.replace(srcPath, newPath)
 
 
-            # curInstruction = self.instructionQueue.pop(0)
-            # try:
-            #     print("Moving file", curInstruction[1], "to", curInstruction[0])
-            #     os.replace(curInstruction[0], curInstruction[1])
-            #     self.instructionQueue.append(("", ""))
-            #
-            # except:
-            #     print("Unable to move file")
-
-            # Add isntruction to instructionQueue
-            # self.instructionQueue.append((srcPath, newPath))
-
-
     def on_moved(self, event):
+        """
+        Event handler for when a file is moved in the directory
+        """
         print("Moved")
+        time.sleep(5)
         self.moveFile(event.dest_path)
 
     def on_created(self, event):
+        """
+        Event handler for when a file is created in the directory
+        """
         print("Created")
+        time.sleep(5)
         self.moveFile(event.src_path)
 
-    def on_deleted(self, event):
-        event.src_path
-        print(f"what the f**k! Someone deleted {event.src_path}!")
-
-
-    def on_modified(self, event):
-        event.src_path
-        print(f"hey buddy, {event.src_path} has been modified")
+    # def on_deleted(self, event):
+    #     event.src_path
+    #     print(f"what the f**k! Someone deleted {event.src_path}!")
+    #
+    # def on_modified(self, event):
+    #     event.src_path
+    #     print(f"hey buddy, {event.src_path} has been modified")
 
 
 
 
 def main():
-    mainPath = "/Users/matthewjordan/Code/DownloadOrganizer/Testfolder/"
+    mainPath = "/Users/matthewjordan/Downloads/"
     outPaths = {
         "Video":{
             "outPath":mainPath + "Video/",
+            "keywords":[],
             "pattern":["*.mp4", "*.mov"]
         },
         "Audio":{
             "outPath":mainPath + "Audio/",
+            "keywords":[],
             "pattern":["*.mp3", "*.m4a", "*.mid", "*.wav", "*.aif", "*.aiff"]
         },
         "Image":{
             "outPath":mainPath + "Image/",
-            "pattern":["*.png", "*.jpg", "*.pdf"]
+            "keywords":[],
+            "pattern":["*.png", "*.jpg", "*.jpeg", "*.gif", "*.pdf"]
+        },
+        "Acapella":{
+            "outPath":mainPath + "Acapella/",
+            "keywords":["acapella", "Acapella"],
+            "pattern":[]
         },
     }
     # Initalize and run the Sorter classe
     dirSorter = DirSorter(mainPath, outPaths)
-    dirSorter.classifyDir()
-    dirSorter.run()
+    # dirSorter.organizeDir()
+    # dirSorter.run()
+    tempPath = mainPath + "(Acapella) Pop Out - Polo G Feat. Lil Tjay.mp3"
+    print(dirSorter.classifyFile(tempPath))
 
 
 if __name__ == '__main__':
